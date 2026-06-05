@@ -53,7 +53,7 @@ namespace TasksTab {
 				ImGui::TextColored(NormalPlayerTask_get_IsComplete(task, NULL)
 					? ImVec4(0.0F, 1.0F, 0.0F, 1.0F)
 					: taskIncompleteCol
-					, TranslateTaskTypes(task->fields._.TaskType));
+					, "%s", GetDetailedTaskName(task).c_str());
 			}
 
 			ImGui::Dummy(ImVec2(7, 7) * State.dpiScale);
