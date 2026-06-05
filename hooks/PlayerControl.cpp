@@ -26,14 +26,25 @@ void dPlayerControl_CompleteTask(PlayerControl* __this, uint32_t idx, MethodInfo
     if (State.ShowHookLogs) LOG_DEBUG("Hook dPlayerControl_CompleteTask executed");
     try {
         std::optional<TaskTypes__Enum> taskType = std::nullopt;
+        std::optional<SystemTypes__Enum> startAt = std::nullopt;
+        std::optional<SystemTypes__Enum> targetSystem = std::nullopt;
 
         auto normalPlayerTasks = GetNormalPlayerTasks(__this);
         for (auto normalPlayerTask : normalPlayerTasks)
-            if (normalPlayerTask->fields._._Id_k__BackingField == idx) taskType = normalPlayerTask->fields._.TaskType;
+            if (normalPlayerTask->fields._._Id_k__BackingField == idx) {
+                taskType = normalPlayerTask->fields._.TaskType;
+                startAt = normalPlayerTask->fields._.StartAt;
+                // Multi-location tasks (e.g. Divert Power) encode the target room in Data[0].
+                if (normalPlayerTask->fields.Data != nullptr) {
+                    auto data = il2cpp::Array(normalPlayerTask->fields.Data);
+                    if (data.size() > 0 && data[0] <= (uint8_t)SystemTypes__Enum::HeliSabotage)
+                        targetSystem = (SystemTypes__Enum)data[0];
+                }
+            }
 
         synchronized(Replay::replayEventMutex) {
-            State.liveReplayEvents.emplace_back(std::make_unique<TaskCompletedEvent>(GetEventPlayerControl(__this).value(), taskType, PlayerControl_GetTruePosition(__this, NULL)));
-            State.liveConsoleEvents.emplace_back(std::make_unique<TaskCompletedEvent>(GetEventPlayerControl(__this).value(), taskType, PlayerControl_GetTruePosition(__this, NULL)));
+            State.liveReplayEvents.emplace_back(std::make_unique<TaskCompletedEvent>(GetEventPlayerControl(__this).value(), taskType, PlayerControl_GetTruePosition(__this, NULL), startAt, targetSystem));
+            State.liveConsoleEvents.emplace_back(std::make_unique<TaskCompletedEvent>(GetEventPlayerControl(__this).value(), taskType, PlayerControl_GetTruePosition(__this, NULL), startAt, targetSystem));
         }
     }
     catch (...) {
