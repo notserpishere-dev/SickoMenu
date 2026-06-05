@@ -683,6 +683,49 @@ const char* TranslateSystemTypes(SystemTypes__Enum systemType) {
     return SYSTEM_TRANSLATIONS.at(static_cast<size_t>(systemType));
 }
 
+// For multi-location tasks (e.g. Divert Power) the target room is stored as the first byte of the
+// task's Data array. Returns nullopt when there's no usable target.
+std::optional<SystemTypes__Enum> GetTaskTargetSystem(NormalPlayerTask* task) {
+    if (task == nullptr || task->fields.Data == nullptr) return std::nullopt;
+    auto data = il2cpp::Array(task->fields.Data);
+    if (data.size() == 0 || data[0] > (uint8_t)SystemTypes__Enum::HeliSabotage) return std::nullopt;
+    return (SystemTypes__Enum)data[0];
+}
+
+// Builds a human-readable task label. Special-cases the two multi-location tasks so the relevant
+// room is shown ("Divert Power to X", "Upload Data (download: X)"); a room is only added when the
+// data is actually available, so we never print a misleading location.
+std::string FormatTaskName(const std::optional<TaskTypes__Enum>& taskType, const std::optional<SystemTypes__Enum>& startAt, const std::optional<SystemTypes__Enum>& targetSystem, const std::optional<SystemTypes__Enum>& completedAtRoom) {
+    if (!taskType.has_value())
+        return completedAtRoom.has_value() ? std::format("UNKNOWN ({})", TranslateSystemTypes(*completedAtRoom)) : "UNKNOWN";
+
+    switch (*taskType) {
+    case TaskTypes__Enum::UploadData:
+        if (startAt.has_value())
+            return std::format("Upload Data (download: {})", TranslateSystemTypes(*startAt));
+        break;
+    case TaskTypes__Enum::DivertPower: {
+        // Prefer the target room from Data; fall back to where the task was completed.
+        auto target = targetSystem.has_value() ? targetSystem : completedAtRoom;
+        if (target.has_value())
+            return std::format("Divert Power to {}", TranslateSystemTypes(*target));
+        break;
+    }
+    default:
+        break;
+    }
+
+    if (completedAtRoom.has_value())
+        return std::format("{} ({})", TranslateTaskTypes(*taskType), TranslateSystemTypes(*completedAtRoom));
+    return TranslateTaskTypes(*taskType);
+}
+
+// Convenience wrapper for live (in-progress) tasks, where the task object is available directly.
+std::string GetDetailedTaskName(NormalPlayerTask* task) {
+    if (task == nullptr) return "UNKNOWN";
+    return FormatTaskName(task->fields._.TaskType, task->fields._.StartAt, GetTaskTargetSystem(task), std::nullopt);
+}
+
 Color32 GetPlayerColor(Game::ColorId colorId) {
     il2cpp::Array colorArray = app::Palette__TypeInfo->static_fields->PlayerColors;
     if ((colorId < 0 || colorId > 17) || (size_t)colorId >= colorArray.size()) {
