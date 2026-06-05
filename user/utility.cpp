@@ -692,21 +692,27 @@ std::optional<SystemTypes__Enum> GetTaskTargetSystem(NormalPlayerTask* task) {
     return (SystemTypes__Enum)data[0];
 }
 
-// Builds a human-readable task label. Special-cases the two multi-location tasks so the relevant
-// room is shown ("Divert Power to X", "Upload Data (download: X)"); a room is only added when the
-// data is actually available, so we never print a misleading location.
+// Builds a human-readable task label with its room. The room is the task's StartAt (where it lives,
+// e.g. the download room for Upload Data); for events we fall back to where it was completed.
+// Upload Data and Divert Power get phrased specially ("download: X" / "to X").
 std::string FormatTaskName(const std::optional<TaskTypes__Enum>& taskType, const std::optional<SystemTypes__Enum>& startAt, const std::optional<SystemTypes__Enum>& targetSystem, const std::optional<SystemTypes__Enum>& completedAtRoom) {
+    auto isValidRoom = [](const std::optional<SystemTypes__Enum>& s) {
+        return s.has_value() && (int)*s >= 0 && (int)*s <= (int)SystemTypes__Enum::HeliSabotage;
+    };
+
     if (!taskType.has_value())
-        return completedAtRoom.has_value() ? std::format("UNKNOWN ({})", TranslateSystemTypes(*completedAtRoom)) : "UNKNOWN";
+        return isValidRoom(completedAtRoom) ? std::format("UNKNOWN ({})", TranslateSystemTypes(*completedAtRoom)) : "UNKNOWN";
+
+    std::optional<SystemTypes__Enum> room = isValidRoom(startAt) ? startAt : (isValidRoom(completedAtRoom) ? completedAtRoom : std::nullopt);
 
     switch (*taskType) {
     case TaskTypes__Enum::UploadData:
-        if (startAt.has_value())
-            return std::format("Upload Data (download: {})", TranslateSystemTypes(*startAt));
+        if (room.has_value())
+            return std::format("Upload Data (download: {})", TranslateSystemTypes(*room));
         break;
     case TaskTypes__Enum::DivertPower: {
-        // Prefer the target room from Data; fall back to where the task was completed.
-        auto target = targetSystem.has_value() ? targetSystem : completedAtRoom;
+        // Prefer the explicit target room from Data; otherwise use the task's room.
+        auto target = targetSystem.has_value() ? targetSystem : room;
         if (target.has_value())
             return std::format("Divert Power to {}", TranslateSystemTypes(*target));
         break;
@@ -715,15 +721,15 @@ std::string FormatTaskName(const std::optional<TaskTypes__Enum>& taskType, const
         break;
     }
 
-    if (completedAtRoom.has_value())
-        return std::format("{} ({})", TranslateTaskTypes(*taskType), TranslateSystemTypes(*completedAtRoom));
+    if (room.has_value())
+        return std::format("{} ({})", TranslateTaskTypes(*taskType), TranslateSystemTypes(*room));
     return TranslateTaskTypes(*taskType);
 }
 
 // Convenience wrapper for live (in-progress) tasks, where the task object is available directly.
 std::string GetDetailedTaskName(NormalPlayerTask* task) {
     if (task == nullptr) return "UNKNOWN";
-    return FormatTaskName(task->fields._.TaskType, task->fields._.StartAt, GetTaskTargetSystem(task), std::nullopt);
+    return FormatTaskName(task->fields._.TaskType, task->fields._.StartAt, GetTaskTargetSystem(task), task->fields._.StartAt);
 }
 
 Color32 GetPlayerColor(Game::ColorId colorId) {
