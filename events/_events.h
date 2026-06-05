@@ -217,10 +217,13 @@ private:
 	std::optional<TaskTypes__Enum> taskType;
 	Vector2 position;
 	SystemTypes__Enum systemType;
+	std::optional<SystemTypes__Enum> startAt;
+	std::optional<SystemTypes__Enum> targetSystem;
 public:
-	TaskCompletedEvent(const EVENT_PLAYER& source, const std::optional<TaskTypes__Enum>& taskType, const Vector2& position);
+	TaskCompletedEvent(const EVENT_PLAYER& source, const std::optional<TaskTypes__Enum>& taskType, const Vector2& position, const std::optional<SystemTypes__Enum>& startAt = std::nullopt, const std::optional<SystemTypes__Enum>& targetSystem = std::nullopt);
 	virtual void Output() override;
 	virtual void ColoredEventOutput() override;
+	std::string GetDetailedName();
 	std::optional<TaskTypes__Enum> GetTaskType() { return this->taskType; }
 	Vector2 GetPosition() { return this->position; }
 	SystemTypes__Enum GetSystemType() { return this->systemType; }
