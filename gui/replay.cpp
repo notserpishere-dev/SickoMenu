@@ -502,11 +502,19 @@ namespace Replay
 				float mapXMax = map.x_offset + (position.x + (icon.iconImage.imageWidth * icon.scale * 0.5f)) * map.scale;
 				float mapYMax = map.y_offset - (position.y + (icon.iconImage.imageHeight * icon.scale * 0.5f)) * map.scale;
 
+				ImVec2 iconMin = ImVec2(getMapXOffsetSkeld(mapX), mapY) * State.dpiScale + ImVec2(cursorPosX, cursorPosY);
+				ImVec2 iconMax = ImVec2(getMapXOffsetSkeld(mapXMax), mapYMax) * State.dpiScale + ImVec2(cursorPosX, cursorPosY);
+
 				drawList->AddImage((void*)icon.iconImage.shaderResourceView,
-					ImVec2(getMapXOffsetSkeld(mapX), mapY) * State.dpiScale + ImVec2(cursorPosX, cursorPosY),
-					ImVec2(getMapXOffsetSkeld(mapXMax), mapYMax) * State.dpiScale + ImVec2(cursorPosX, cursorPosY),
+					iconMin,
+					iconMax,
 					ImVec2(0.0f, 1.0f),
 					ImVec2(1.0f, 0.0f));
+
+				if (ImGui::IsMouseHoveringRect(
+						ImVec2((std::min)(iconMin.x, iconMax.x), (std::min)(iconMin.y, iconMax.y)),
+						ImVec2((std::max)(iconMin.x, iconMax.x), (std::max)(iconMin.y, iconMax.y))))
+					ImGui::SetTooltip("%s", task_event->GetDetailedName().c_str());
 			}
 			else if (evtType == EVENT_TYPES::EVENT_REPORT || evtType == EVENT_TYPES::EVENT_MEETING)
 			{
