@@ -868,14 +868,15 @@ namespace PlayersTab {
                         {
                             for (auto task : tasks)
                             {
+                                std::string taskName = GetDetailedTaskName(task);
                                 if (task->fields.taskStep == task->fields.MaxStep)
-                                    ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), (std::string(TranslateTaskTypes(task->fields._.TaskType))).c_str());
+                                    ImGui::TextColored(ImVec4(0.0F, 1.0F, 0.0F, 1.0F), "%s", taskName.c_str());
                                 else {
                                     if ((!State.SafeMode || selectedPlayer.is_LocalPlayer())) {
-                                        if (AnimatedButton((std::string(TranslateTaskTypes(task->fields._.TaskType))).c_str()))
+                                        if (AnimatedButton((taskName + "##" + std::to_string(task->fields._._Id_k__BackingField)).c_str()))
                                             State.taskRpcQueue.push(new RpcForceCompleteTask(selectedPlayer.get_PlayerControl(), task->fields._._Id_k__BackingField));
                                     }
-                                    else ImGui::Text((std::string(TranslateTaskTypes(task->fields._.TaskType))).c_str());
+                                    else ImGui::Text("%s", taskName.c_str());
                                 }
                             }
                         }
