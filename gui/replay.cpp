@@ -216,6 +216,9 @@ namespace Replay
 							(ghostInfo->fields.Role->fields.Role == RoleTypes__Enum::GuardianAngel)));
 				if (isGhost) {
 					auto deathTime = State.replayDeathTimePerPlayer[plrLineData.playerId];
+					bool deathUnknown = (deathTime == (std::chrono::system_clock::time_point::max)());
+					if (deathUnknown)
+						continue; // no recorded death time: hide the trail entirely
 					if (!effIsUsingMaxTimeFilter || deathTime < effMaxTimeFilter) {
 						effMaxTimeFilter = deathTime;
 						effIsUsingMaxTimeFilter = true;
@@ -258,16 +261,21 @@ namespace Replay
 					(Replay::player_filter[plrIdx].first.has_value() == false)))
 				continue;
 
-			// hide ghosts: once the player has died by the current playback time, stop rendering them
+			// hide ghosts: once the player has died by the current playback time, stop rendering them.
+			// if the death time was never recorded (e.g. disconnect, or already dead on join) we hide
+			// unconditionally rather than leave them visible forever.
 			if (State.Replay_HideGhosts) {
 				auto ghostInfo = GetPlayerDataById(plrLineData.playerId);
 				bool isGhost = (ghostInfo != NULL) &&
 					((ghostInfo->fields.IsDead) ||
 						((ghostInfo->fields.Role != NULL) &&
 							(ghostInfo->fields.Role->fields.Role == RoleTypes__Enum::GuardianAngel)));
-				if (isGhost &&
-					(!isUsingMaxTimeFilter || maxTimeFilter >= State.replayDeathTimePerPlayer[plrLineData.playerId]))
-					continue;
+				if (isGhost) {
+					auto deathTime = State.replayDeathTimePerPlayer[plrLineData.playerId];
+					bool deathUnknown = (deathTime == (std::chrono::system_clock::time_point::max)());
+					if (deathUnknown || !isUsingMaxTimeFilter || maxTimeFilter >= deathTime)
+						continue;
+				}
 			}
 
 			// we get the player's position from the line data which is constructed from WalkEvents
